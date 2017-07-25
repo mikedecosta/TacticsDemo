@@ -105,7 +105,7 @@ public class Pathfinder : MonoBehaviour {
 					continue;
 				}
 				
-				int newMovementCostToNeighbor = currentNode.gCost + cost + neighbor.movementPenalty;
+				int newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor) + neighbor.movementPenalty;
 				if (!highlight.Contains(neighbor) || newMovementCostToNeighbor < neighbor.gCost || !openSet.Contains(neighbor)) {
 					neighbor.gCost = newMovementCostToNeighbor;
 					neighbor.hCost = 0;

@@ -23,6 +23,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	float currentHealth;
 	int currentInitiative;
+	float moveDistancePerRound;
 	Vector3 targetPosition;
 	Vector3[] path;
 	int targetIndex;
@@ -67,6 +68,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	void Start() {
 		currentHealth = maxHealth;
+		moveDistancePerRound = moveSquaresPerRound * 10f;
 		stateManager = FindObjectOfType<StateManager>();
 		stateManager.stateChangeObservers += HandleStateChange;
 		stateManager.activeUnitChangeObservers += HandleChooseTactics;
@@ -111,13 +113,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	void Update() {
-		CheckDeath();
-	}
-	
-	void CheckDeath() {
-		if (currentHealth <= 0) {
-			transform.position = transform.position + Vector3.down;
-		}
+		
 	}
 	
 	void HandleStateChange() {
@@ -167,7 +163,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	IEnumerator ChooseMoveLocation() {
 		Vector3 targetLocation = Vector3.zero;
-		grid.HighlightSquaresInRange(currentNode, moveSquaresPerRound);
+		grid.HighlightSquaresInRange(currentNode, moveDistancePerRound);
 		while(true) {
 			if (isMouseClickedValid() && isMoveLocationValid()) {
 				targetLocation = targetNode.worldPosition;
@@ -176,7 +172,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 			yield return null;
 		}
 		
-		PathRequestManager.RequestPath(transform.position, targetLocation, moveSquaresPerRound * 10f, OnPathFound);
+		PathRequestManager.RequestPath(transform.position, targetLocation, moveDistancePerRound, OnPathFound);
 	}
 	
 	public void HandleChooseAttackSelection() {
@@ -187,7 +183,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	IEnumerator ChooseAttackLocation() {
-		grid.HighlightSquaresInRange(currentNode, basicAttackRadiusInSquares);
+		grid.HighlightSquaresInRange(currentNode, basicAttackRadiusInSquares * 10f);
 		while(true) {
 			if (isMouseClickedValid() && isAttackLocationValid()) {
 				break;

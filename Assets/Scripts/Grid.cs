@@ -12,14 +12,11 @@ public class Grid : MonoBehaviour {
 	public float nodeRadius;
 	public TerrainType[] walkableRegions;
 	public bool allowDiagonals = false;
-	//public Node instantiatedNode;
 	
-	GameObject nodes;
 	LayerMask walkableMask;
 	Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>();
 	Graph graph;
 	StateManager stateManager;
-	
 	float nodeDiameter;
 	int gridSizeX;
 	int gridSizeY;
@@ -56,9 +53,14 @@ public class Grid : MonoBehaviour {
 	}
 	
 	void CreateGrid() {
+		setupNodes();
+		addNeighbors();
+	}
+	
+	private void setupNodes() {
 		graph = new Graph();
-		Vector3 worldBottomLeft = transform.position - Vector3.right * gridWorldSize.x/2 - Vector3.forward * gridWorldSize.y/2;
-		Node node = new Node(false, worldBottomLeft, Vector3.zero, 0);
+		Vector3 worldBottomLeft = getWorldBottomLeft();
+		Node node;
 		
 		for (int x = 0; x < gridSizeX; x++) {
 			for (int y = 0; y < gridSizeY; y++) {
@@ -79,7 +81,13 @@ public class Grid : MonoBehaviour {
 				graph.AddNode(key, node);
 			}
 		}
-		
+	}
+	
+	private Vector3 getWorldBottomLeft() {
+		return transform.position - Vector3.right * gridWorldSize.x/2 - Vector3.forward * gridWorldSize.y/2;
+	}
+	
+	private void addNeighbors() {
 		Vector3 neighborKey;
 		foreach(Node workingNode in graph) {
 			for (int i = -2; i <= 2; i++) {
@@ -323,11 +331,7 @@ public class Grid : MonoBehaviour {
 		return x != 0 && y != 0;
 	}
 	
-	public Node NodeFromWorldPoint(Vector3 worldPosition) {
-		float percentX = Mathf.Clamp01( (worldPosition.x + gridWorldSize.x/2) / gridWorldSize.x );
-		float percentY = Mathf.Clamp01( (worldPosition.z + gridWorldSize.y/2) / gridWorldSize.y );
-		float percentZ = Mathf.Clamp01( (worldPosition.y + maxHeight/2) / maxHeight );
-		
+	public Node NodeFromWorldPoint(Vector3 worldPosition) {		
 		int x = worldPointXToKeyInt(worldPosition.x);
 		int y = worldPointYToKeyInt(worldPosition.z);
 		int z = worldPointZToKeyInt(worldPosition.y);
