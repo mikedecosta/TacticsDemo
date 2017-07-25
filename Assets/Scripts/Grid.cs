@@ -13,15 +13,17 @@ public class Grid : MonoBehaviour {
 	public TerrainType[] walkableRegions;
 	public bool allowDiagonals = false;
 	//public Node instantiatedNode;
+	
 	GameObject nodes;
 	LayerMask walkableMask;
 	Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>();
-	Node[,] grid;
+	Graph graph;
 	StateManager stateManager;
 	
 	float nodeDiameter;
 	int gridSizeX;
 	int gridSizeY;
+	int gridHeight;
 	CameraRaycaster cameraRaycaster;
 	Node hoveredNode;
 	HashSet<Node> highlightedNodes = new HashSet<Node>();
@@ -31,6 +33,7 @@ public class Grid : MonoBehaviour {
 		nodeDiameter = nodeRadius * 2;
 		gridSizeX = Mathf.RoundToInt(gridWorldSize.x/nodeDiameter);
 		gridSizeY = Mathf.RoundToInt(gridWorldSize.y/nodeDiameter);
+		gridHeight = Mathf.RoundToInt(maxHeight/nodeDiameter);
 		
 		foreach (TerrainType region in walkableRegions) {
 			walkableMask.value |= region.terrainMask.value;
@@ -48,14 +51,14 @@ public class Grid : MonoBehaviour {
 	
 	public int MaxSize {
 		get {
-			return gridSizeX * gridSizeY;
+			return gridSizeX * gridSizeY * 1; // TODO add height
 		}
 	}
 	
 	void CreateGrid() {
-		grid = new Node[gridSizeX, gridSizeY];
+		graph = new Graph();
 		Vector3 worldBottomLeft = transform.position - Vector3.right * gridWorldSize.x/2 - Vector3.forward * gridWorldSize.y/2;
-		Node node = new Node(false, worldBottomLeft, 0, 0, 0);
+		Node node = new Node(false, worldBottomLeft, Vector3.zero, 0);
 		
 		for (int x = 0; x < gridSizeX; x++) {
 			for (int y = 0; y < gridSizeY; y++) {
@@ -66,56 +69,43 @@ public class Grid : MonoBehaviour {
 				Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
 				RaycastHit hit;
 				if (Physics.SphereCast(ray, nodeRadius-.1f, out hit, 100f, walkableMask)) {
-				//if (Physics.Raycast(ray, out hit, 100f, walkableMask)) {
 					height = (hit.point.y);
 					worldPoint.y = height;
 				}
 				
-				//Node node;
-				node = new Node(walkable, worldPoint, x, y, 0);
-				//node = Instantiate(instantiatedNode, worldPoint, Quaternion.identity) as Node;
-				//node.name = "("+x+","+y+") Node";
-				//if (nodes != null) {
-				//	node.transform.SetParent(nodes.transform);
-				//}
-				//node.walkable = walkable;
-				//node.worldPosition = worldPoint;
-				node.gridX = x;
-				node.gridY = y;
-				//node.movementPenalty = 0;
+				Vector3 key = new Vector3(x, y, 0);
+				node = new Node(walkable, worldPoint, key, 0);
 				node.nodeChangedObservers += OnNodeChange;
-				grid[x,y] = node;
+				graph.AddNode(key, node);
 			}
 		}
 		
-/*		Node workingNode;
-		for (int c = 0; c < gridSizeX; c++) {
-			for (int r = 0; r < gridSizeY; r++) {
-				workingNode = grid[c,r];
-				for (int i = -2; i <= 2; i++) {
-					for (int j = -2; j <= 2; j++) {
-						int neighborX = workingNode.gridX + i;
-						int neighborY = workingNode.gridY + j;
-						if ( 
-						    isSelf(i, j) || 
-						    !isOnGrid(neighborX, neighborY) ||
-						    (!allowDiagonals && isDiagonal(i, j))
-						    ) {
-							continue;
-						}
-						
-						float weight = (float) Math.Round( (workingNode.worldPosition - grid[neighborX, neighborY].worldPosition).magnitude, 2);
-						workingNode.Neighbors.Add(grid[neighborX, neighborY]);
-						workingNode.Costs.Add(weight);
+		Vector3 neighborKey;
+		foreach(Node workingNode in graph) {
+			for (int i = -2; i <= 2; i++) {
+				for (int j = -2; j <= 2; j++) {
+					int neighborX = (int) workingNode.key.x + i;
+					int neighborY = (int) workingNode.key.y + j;
+					if ( 
+					    isSelf(i, j) || 
+					    !isOnGrid(neighborX, neighborY) ||
+					    (!allowDiagonals && isDiagonal(i, j))
+					    ) {
+						continue;
 					}
+					
+					neighborKey = new Vector3(neighborX, neighborY, 0);
+					float weight = (float) Math.Round( (workingNode.worldPosition - graph.getNodeFromKey(neighborKey).worldPosition).magnitude, 2);
+					workingNode.Neighbors.Add(graph.getNodeFromKey(neighborKey));
+					workingNode.Costs.Add(weight);
 				}
 			}
 		}
-*/
 	}
 	
 	public List<Node> GetNeighborsAllowDiaganols(Node node) {
-		return getNeighbors(node, true);
+		return node.Neighbors;
+		//return getNeighbors(node, true);
 	}
 
 	public List<Node> GetNighborsDissallowDiaganols(Node node) {
@@ -152,10 +142,10 @@ public class Grid : MonoBehaviour {
 	private List<Node> getNeighbors(Node node, bool allowDiagonals) {
 		List<Node> neighbors = new List<Node>();
 		
-		neighbors.AddRange(getNorthernNeighbor(node));
-		neighbors.AddRange(getEasternNeighbor(node));
-		neighbors.AddRange(getSouthernNeighbor(node));
-		neighbors.AddRange(getWesternNeighbor(node));
+		//neighbors.AddRange(getNorthernNeighbor(node));
+		//neighbors.AddRange(getEasternNeighbor(node));
+		//neighbors.AddRange(getSouthernNeighbor(node));
+		//neighbors.AddRange(getWesternNeighbor(node));
 		
 /*		
 		for (int x = -1; x <= 1; x++) {
@@ -174,9 +164,9 @@ public class Grid : MonoBehaviour {
 			}
 		}
 */
-		return neighbors;
+		return node.Neighbors;
 	}
-	
+/*	
 	private List<Node> getNorthernNeighbor(Node node) {
 		List<Node> northernNeighbor = new List<Node>();
 		int neighborY;
@@ -304,7 +294,7 @@ public class Grid : MonoBehaviour {
 		
 		return northernNeighbor;
 	}
-	
+*/	
 	public void HighlightSquaresInRange(Node origin, float range) {
 		PathRequestManager.RequestHighlights(origin.worldPosition, range, HighlightSquare);
 	}
@@ -336,15 +326,33 @@ public class Grid : MonoBehaviour {
 	public Node NodeFromWorldPoint(Vector3 worldPosition) {
 		float percentX = Mathf.Clamp01( (worldPosition.x + gridWorldSize.x/2) / gridWorldSize.x );
 		float percentY = Mathf.Clamp01( (worldPosition.z + gridWorldSize.y/2) / gridWorldSize.y );
+		float percentZ = Mathf.Clamp01( (worldPosition.y + maxHeight/2) / maxHeight );
 		
-		int x = Mathf.RoundToInt( (gridSizeX-1) * percentX );
-		int y = Mathf.RoundToInt( (gridSizeY-1) * percentY );
+		int x = worldPointXToKeyInt(worldPosition.x);
+		int y = worldPointYToKeyInt(worldPosition.z);
+		int z = worldPointZToKeyInt(worldPosition.y);
 		
-		return grid[x,y];
+		return graph.getNodeFromKey(new Vector3(x,y,z));
+	}
+	
+	private int worldPointXToKeyInt(float worldPointX) {
+		float percentX = Mathf.Clamp01( (worldPointX + gridWorldSize.x/2) / gridWorldSize.x );
+		return Mathf.RoundToInt( (gridSizeX-1) * percentX );
+	}
+	
+	private int worldPointYToKeyInt(float worldPointZ) {
+		float percentY = Mathf.Clamp01( (worldPointZ + gridWorldSize.y/2) / gridWorldSize.y );
+		return Mathf.RoundToInt( (gridSizeY-1) * percentY );
+	}
+	
+	private int worldPointZToKeyInt(float worldPointY) {
+		//float percentZ = Mathf.Clamp01( (worldPointY + maxHeight/2) / maxHeight );
+		//return Mathf.RoundToInt( (maxHeight-1) * percentZ );
+		return 0;
 	}
 	
 	void OnNodeChange(Node newNode) {
-		grid[newNode.gridX, newNode.gridY] = newNode;
+		graph.UpdateNode(newNode);
 	}
 	
 	void ChangeHighlight(Node newHoveredNode) {
@@ -363,9 +371,9 @@ public class Grid : MonoBehaviour {
 		Gizmos.DrawWireCube(gridOrigin, new Vector3(gridWorldSize.x, maxHeight, gridWorldSize.y));
 		float size = (float) (1 * (nodeDiameter - .07));
 		
-		if (grid != null) {
+		if (graph != null) {
 			if (drawGridSquares) {
-				foreach (Node n in grid) {
+				foreach (Node n in graph) {
 					if (n.isOccupied) {
 						Gizmos.color = Color.red;
 					} else if (hoveredNode == n) {

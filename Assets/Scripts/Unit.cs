@@ -14,15 +14,14 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	[SerializeField] int initiativeMin = 1;
 	[SerializeField] int initiativeMax = 100;
 	[SerializeField] float maxHealth = 1000f;
-	[SerializeField] float moveSpeed = 60f;
+	[SerializeField] float moveSpeed = 10f;
 	[SerializeField] float basicAttackDamage = 250f;
-	[SerializeField] float basicAttackDistance = 13f;
-	[SerializeField] public float moveDistancePerRound = 60f;
+	[SerializeField] int basicAttackRadiusInSquares = 1;
+	[SerializeField] int moveSquaresPerRound = 6;
 	public Sprite redTeamOutline;
 	public Sprite blueTeamOutline;
 	
-	public int moveSquaresPerRound = 6;
-	float currentHealth = 1000f;
+	float currentHealth;
 	int currentInitiative;
 	Vector3 targetPosition;
 	Vector3[] path;
@@ -67,6 +66,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	void Start() {
+		currentHealth = maxHealth;
 		stateManager = FindObjectOfType<StateManager>();
 		stateManager.stateChangeObservers += HandleStateChange;
 		stateManager.activeUnitChangeObservers += HandleChooseTactics;
@@ -167,7 +167,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	IEnumerator ChooseMoveLocation() {
 		Vector3 targetLocation = Vector3.zero;
-		grid.HighlightSquaresInRange(currentNode, moveDistancePerRound);
+		grid.HighlightSquaresInRange(currentNode, moveSquaresPerRound);
 		while(true) {
 			if (isMouseClickedValid() && isMoveLocationValid()) {
 				targetLocation = targetNode.worldPosition;
@@ -176,7 +176,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 			yield return null;
 		}
 		
-		PathRequestManager.RequestPath(transform.position, targetLocation, moveDistancePerRound, OnPathFound);
+		PathRequestManager.RequestPath(transform.position, targetLocation, moveSquaresPerRound * 10f, OnPathFound);
 	}
 	
 	public void HandleChooseAttackSelection() {
@@ -187,7 +187,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	IEnumerator ChooseAttackLocation() {
-		grid.HighlightSquaresInRange(currentNode, basicAttackDistance);
+		grid.HighlightSquaresInRange(currentNode, basicAttackRadiusInSquares);
 		while(true) {
 			if (isMouseClickedValid() && isAttackLocationValid()) {
 				break;
@@ -207,12 +207,12 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	bool isAttackLocationValid() {
-		return targetNode.walkable && GetDistance(currentNode, targetNode) <= basicAttackDistance;
+		return targetNode.walkable && GetDistance(currentNode, targetNode) <= basicAttackRadiusInSquares * 10f;
 	}
 	
 	int GetDistance(Node nodeA, Node nodeB) {
-		int distX = Mathf.Abs (nodeA.gridX - nodeB.gridX);
-		int distY = Mathf.Abs (nodeA.gridY - nodeB.gridY);
+		int distX = (int) Mathf.Abs (nodeA.key.x - nodeB.key.x);
+		int distY = (int) Mathf.Abs (nodeA.key.y - nodeB.key.y);
 		int distHeight = Mathf.RoundToInt(Mathf.Abs (nodeA.worldPosition.y - nodeB.worldPosition.y));
 		
 		return 10*distX + 10*distY + distHeight;
