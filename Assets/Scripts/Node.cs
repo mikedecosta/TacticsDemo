@@ -8,31 +8,27 @@ public class Node : IHeapItem<Node> {
 	public bool occupied;
 	public bool highlighted;
 	public Vector3 worldPosition;
-	public int gridX;
-	public int gridY;
 	public int movementPenalty;
 	public int gCost;
 	public int hCost;
 	public Node parent;
+	public Vector3 key;
 	int heapIndex;
 	Unit occupiedUnit;
 	StateManager stateManager;
 	List<Node> neighbors;
 	List<float> costs;
 	
-	public Node(bool _walkable, Vector3 _worldPosition, int _gridX, int _gridY, int _movementPenalty) {
+	public Node(bool _walkable, Vector3 _worldPosition, Vector3 _key, int _movementPenalty) {
 		walkable = _walkable;
 		worldPosition = _worldPosition;
-		gridX = _gridX;
-		gridY = _gridY;
+		key = _key;
 		movementPenalty = _movementPenalty;
 	}
 	
-	public Node(bool _walkable, Vector3 _worldPosition, int _gridX, int _gridY, int _movementPenalty, Unit _occupiedUnit) {
+	public Node(bool _walkable, Vector3 _worldPosition, Vector3 _key, int _movementPenalty, Unit _occupiedUnit) {
 		walkable = _walkable;
 		worldPosition = _worldPosition;
-		gridX = _gridX;
-		gridY = _gridY;
 		movementPenalty = _movementPenalty;
 		occupiedUnit = _occupiedUnit;
 	}
@@ -156,7 +152,7 @@ public class Node : IHeapItem<Node> {
 			jsString += "\"false\", ";
 		}
 		jsString += "\"worldPosition\" : \"" + worldPosition.ToString() + "\", ";
-		jsString += "\"gridXY\" : \"(" + gridX + "," + gridY + ")\" ";
+		jsString += "\"key\" : \"" + key.ToString() + "\", ";
 		jsString += "\"gCost\" : \"" + gCost + "\", ";
 		jsString += "\"hCost\" : \"" + hCost + "\", ";
 		jsString += "\"fCost\" : \"" + fCost + "\", ";
@@ -165,7 +161,7 @@ public class Node : IHeapItem<Node> {
 			for(int i = 0; i < neighbors.Count; i++) {
 				Node neighbor = neighbors[i];
 				jsString += costs[i];
-				jsString += "\" => (" + neighbor.gridX + "," + neighbor.gridY + ")\", ";
+				jsString += "\" => (" + neighbor.key + ")\", ";
 			}
 			jsString += "]\n";
 		}

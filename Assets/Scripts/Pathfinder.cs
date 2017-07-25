@@ -96,14 +96,17 @@ public class Pathfinder : MonoBehaviour {
 			Node currentNode = openSet.RemoveFirst();
 			closedSet.Add(currentNode);
 			
-			List<Node> neighbors = allowDiagonals ? grid.GetNeighborsAllowDiaganols(currentNode) : grid.GetNighborsDissallowDiaganols(currentNode);
-			foreach (Node neighbor in neighbors) {
+			Node neighbor;
+			int cost;
+			for (int i = 0; i < currentNode.Neighbors.Count; i++) {
+				neighbor = currentNode.Neighbors[i];
+				cost = (int) currentNode.Costs[i];
 				if (!neighbor.walkable || neighbor.isOccupied || closedSet.Contains(neighbor)) {
 					continue;
 				}
 				
-				int newMovementCostToNeighbor = currentNode.gCost + GetDistance(currentNode, neighbor) + neighbor.movementPenalty;
-				if (newMovementCostToNeighbor < neighbor.gCost || !openSet.Contains(neighbor)) {
+				int newMovementCostToNeighbor = currentNode.gCost + cost + neighbor.movementPenalty;
+				if (!highlight.Contains(neighbor) || newMovementCostToNeighbor < neighbor.gCost || !openSet.Contains(neighbor)) {
 					neighbor.gCost = newMovementCostToNeighbor;
 					neighbor.hCost = 0;
 					neighbor.parent = currentNode;
@@ -113,13 +116,7 @@ public class Pathfinder : MonoBehaviour {
 						continue;
 					}
 					
-					if (!highlight.Contains(neighbor)) {
-						highlight.Add(neighbor);
-					} else {
-						//Debug.Log("highlight.Contains(neighbor)");
-						//Debug.Log("neighbor = "+neighbor.ToString());
-					}
-					
+					highlight.Add(neighbor);
 					if (!openSet.Contains(neighbor)) {
 						openSet.Add(neighbor);
 					} else {
@@ -128,8 +125,8 @@ public class Pathfinder : MonoBehaviour {
 				}
 			}
 		}
-		yield return null;
 		
+		yield return null;
 		foreach(Node node in closedSet) {
 			node.resetCosts();
 		}
@@ -137,7 +134,7 @@ public class Pathfinder : MonoBehaviour {
 			Node node = openSet.RemoveFirst();
 			node.resetCosts();
 		}
-		
+
 		pathRequestManager.FinishedProcessingHighlight(highlight);
 	}
 	
@@ -178,7 +175,7 @@ public class Pathfinder : MonoBehaviour {
 		waypoints.Add(path[0].worldPosition);
 		
 		for (int i = 1; i < path.Count; i++) {
-			Vector2 directionNew = new Vector2(path[i-1].gridX - path[i].gridX, path[i-1].gridY - path[i].gridY);
+			Vector2 directionNew = new Vector2(path[i-1].key.x - path[i].key.x, path[i-1].key.y - path[i].key.y);
 			if (directionNew != directionOld) {
 				waypoints.Add(path[i].worldPosition);
 				directionOld = directionNew;
@@ -197,8 +194,8 @@ public class Pathfinder : MonoBehaviour {
 	}
 	
 	int GetDistanceAllowDiagonals(Node nodeA, Node nodeB) {
-		int distX = Mathf.Abs (nodeA.gridX - nodeB.gridX);
-		int distY = Mathf.Abs (nodeA.gridY - nodeB.gridY);
+		int distX = (int) Mathf.Abs (nodeA.key.x - nodeB.key.x);
+		int distY = (int) Mathf.Abs (nodeA.key.y - nodeB.key.y);
 		
 		if (distX > distY) {
 			return 14*distY + 10*(distX - distY);
@@ -208,8 +205,8 @@ public class Pathfinder : MonoBehaviour {
 	}
 	
 	int GetDistanceDisallowDiagonals(Node nodeA, Node nodeB) {
-		int distX = Mathf.Abs (nodeA.gridX - nodeB.gridX);
-		int distY = Mathf.Abs (nodeA.gridY - nodeB.gridY);
+		int distX = (int) Mathf.Abs (nodeA.key.x - nodeB.key.x);
+		int distY = (int) Mathf.Abs (nodeA.key.y - nodeB.key.y);
 		int distHeight = Mathf.RoundToInt(Mathf.Abs (nodeA.worldPosition.y - nodeB.worldPosition.y));
 		
 		return 10*distX + 10*distY + distHeight;
