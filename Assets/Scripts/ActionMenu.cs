@@ -10,7 +10,6 @@ public class ActionMenu : MonoBehaviour {
 	StateManager stateManager;
 	Dictionary<Unit, List<Button>> buttons = new Dictionary<Unit, List<Button>>();
 	Button parentButton;
-	float buttonOffset = 35f;
 
 	// Use this for initialization
 	void Awake () {
@@ -24,12 +23,7 @@ public class ActionMenu : MonoBehaviour {
 		RectTransform rectTransform;
 		List<Button> toAdd = new List<Button>();
 		for(int i = 0; i < ibuttons.Count; i++) {
-			working = createButton(ibuttons[i]);
-			rectTransform = working.GetComponent<RectTransform>();
-			float xPos = rectTransform.anchoredPosition.x;
-			float yPos = rectTransform.anchoredPosition.y;
-			rectTransform.anchoredPosition = new Vector3(xPos, yPos - (buttonOffset * i), -1f);
-			toAdd.Add(working);
+			toAdd.Add(createButton(ibuttons[i]));
 		}
 		
 		buttons.Add(owningUnit, toAdd);
@@ -76,24 +70,24 @@ public class ActionMenu : MonoBehaviour {
 	}
 	
 	void showChildButtons(IButton parent) {
-/* it's an IButton, not a Button	
 		CanvasGroup cg;
-		foreach (Button button in parent.children) {
+		Button button;
+		foreach (IButton ibutton in parent.children) {
+			button = ibutton.button;
 			cg = button.GetComponent<CanvasGroup>();
 			cg.interactable = true;
 			cg.alpha = 1;
 			button.transform.SetParent(transform);
 		}
-*/
 	}
 	
-	public void increaseUiLevel(IButton parent) {
+	public void displayChildren(IButton parent) {
 		Debug.Log(parent.text);
-		//hideAllButtons();
-		//showChildButtons(parent);
+		hideAllButtons();
+		showChildButtons(parent);
 	}
 	
-	public void decreaseUiLevel(IButton parent) {
+	public void returnToParent(IButton parent) {
 		Debug.Log(parent.text);
 		//hideAllButtons();
 		//showChildButtons(parent);
@@ -105,11 +99,8 @@ public class ActionMenu : MonoBehaviour {
 		Text text = clone.GetComponentInChildren<Text>();
 		text.text = info.text;
 		clone.onClick.AddListener(info.action);
-		Debug.Log(clone);
-		Debug.Log(clone.transform);
-		Debug.Log(hiddenActions);
-		Debug.Log(hiddenActions.transform);
 		clone.transform.SetParent(hiddenActions.transform);
+		info.setButton(clone);
 		
 		return clone;
 	}
@@ -121,6 +112,7 @@ public class IButton {
 	public UnityAction action;
 	public IButton parent;
 	public List<IButton> children;
+	public Button button;
 	
 	public IButton(string _text, UnityAction _action) {
 		text = _text;
@@ -143,6 +135,10 @@ public class IButton {
 		}
 		
 		children = _children;
+	}
+	
+	public void setButton(Button _button) {
+		button = _button;
 	}
 }
 
