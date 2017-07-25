@@ -32,8 +32,8 @@ public class Pathfinder : MonoBehaviour {
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
 		
-		Debug.Log ("startNode = " + startNode.ToString());
-		Debug.Log ("targetNode = " + targetNode.ToString());
+		//Debug.Log ("startNode = " + startNode.ToString());
+		//Debug.Log ("targetNode = " + targetNode.ToString());
 		
 		Heap<Node> openSet = new Heap<Node>(grid.MaxSize);
 		HashSet<Node> closedSet = new HashSet<Node>();
@@ -116,8 +116,8 @@ public class Pathfinder : MonoBehaviour {
 					if (!highlight.Contains(neighbor)) {
 						highlight.Add(neighbor);
 					} else {
-						Debug.Log("highlight.Contains(neighbor)");
-						Debug.Log("neighbor = "+neighbor.ToString());
+						//Debug.Log("highlight.Contains(neighbor)");
+						//Debug.Log("neighbor = "+neighbor.ToString());
 					}
 					
 					if (!openSet.Contains(neighbor)) {

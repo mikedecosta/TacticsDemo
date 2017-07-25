@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System;
 using System.Collections;
@@ -132,7 +133,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	void HandleChooseTactics(Unit activeUnit) {
-		Debug.Log(gameObject.name + ": HandleChooseTactics");
+		//Debug.Log(gameObject.name + ": HandleChooseTactics");
 		if (!activeUnit.gameObject.Equals(gameObject)) {
 			return;
 		}
@@ -168,7 +169,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 		Vector3 targetLocation = Vector3.zero;
 		grid.HighlightSquaresInRange(currentNode, moveDistancePerRound);
 		while(true) {
-			if (Input.GetMouseButton(0) && targetNode.walkable && !targetNode.isOccupied && targetNode != currentNode) {
+			if (isMouseClickedValid() && isMoveLocationValid()) {
 				targetLocation = targetNode.worldPosition;
 				break;
 			}
@@ -188,13 +189,25 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	IEnumerator ChooseAttackLocation() {
 		grid.HighlightSquaresInRange(currentNode, basicAttackDistance);
 		while(true) {
-			if (Input.GetMouseButton(0) && targetNode.walkable && GetDistance(currentNode, targetNode) <= basicAttackDistance) {
+			if (isMouseClickedValid() && isAttackLocationValid()) {
 				break;
 			}
 			yield return null;
 		}
 		
 		BasicAttack(targetNode);
+	}
+	
+	bool isMouseClickedValid() {
+		return Input.GetMouseButton(0) && !EventSystem.current.IsPointerOverGameObject();
+	}
+	
+	bool isMoveLocationValid() {
+		return targetNode.walkable && !targetNode.isOccupied && targetNode != currentNode;
+	}
+	
+	bool isAttackLocationValid() {
+		return targetNode.walkable && GetDistance(currentNode, targetNode) <= basicAttackDistance;
 	}
 	
 	int GetDistance(Node nodeA, Node nodeB) {
@@ -220,7 +233,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	public void HandleChooseWait() {
 		if (stateManager.getActiveUnit().gameObject.Equals(gameObject)) {
-			Debug.Log(gameObject.name + ": HandleWaitSelection");
+			//Debug.Log(gameObject.name + ": HandleWaitSelection");
 			EndTheTurn();
 		}
 	}
@@ -239,10 +252,10 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	
 	public void OnPathFound(Vector3[] newPath, bool pathFound) {
-		Debug.Log(gameObject.name + ": Inside OnPathFound");
+		//Debug.Log(gameObject.name + ": Inside OnPathFound");
 		if (pathFound) {
 			path = newPath;
-			Debug.Log(gameObject.name + ": Last waypoint in path = " + path[path.Length - 1].ToString());
+			//Debug.Log(gameObject.name + ": Last waypoint in path = " + path[path.Length - 1].ToString());
 			TriggerTacticsChosenObservers();
 		} else {
 			path = null;
