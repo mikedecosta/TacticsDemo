@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class Graph : IEnumerable  {
+	public Node emptyNode = new Node(false, new Vector3(-999f, -999f, -999f), new Vector3(-999f, -999f, -999f), -999);
 	private Dictionary<Vector3, Node> nodeSet;
 
 	public Graph() : this(null) {}
@@ -13,8 +14,8 @@ public class Graph : IEnumerable  {
 			this.nodeSet = nodeSet;
 	}
 	
-	public Node getNodeFromKey(Vector3 key) {
-		Node node = new Node(false, Vector3.zero, Vector3.zero, 0);
+	public Node GetNodeFromKey(Vector3 key) {
+		Node node = emptyNode;
 		if (nodeSet.ContainsKey(key)) {
 			nodeSet.TryGetValue(key, out node);
 		}
@@ -26,12 +27,12 @@ public class Graph : IEnumerable  {
 		nodeSet.Add(key, node);
 	}
 	
-	public void AddDirectedEdge(Node from, Node to, int cost) {
+	public void AddDirectedEdge(Node from, Node to, float cost) {
 		from.Neighbors.Add(to);
 		from.Costs.Add(cost);
 	}
 	
-	public void AddUndirectedEdge(Node from, Node to, int cost) {
+	public void AddUndirectedEdge(Node from, Node to, float cost) {
 		from.Neighbors.Add(to);
 		from.Costs.Add(cost);
 		

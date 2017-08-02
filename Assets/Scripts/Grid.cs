@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -32,11 +32,15 @@ public class Grid : MonoBehaviour {
 		gridSizeY = Mathf.RoundToInt(gridWorldSize.y/nodeDiameter);
 		gridHeight = Mathf.RoundToInt(maxHeight/nodeDiameter);
 		
+		CreateWalkableRegionsDictionary();
+		CreateGrid();
+	}
+	
+	private void CreateWalkableRegionsDictionary() {
 		foreach (TerrainType region in walkableRegions) {
 			walkableMask.value |= region.terrainMask.value;
 			walkableRegionsDictionary.Add((int) Mathf.Log(region.terrainMask.value,2), region.terrainPenalty);
 		}
-		CreateGrid();
 	}
 	
 	void Start() {
@@ -52,19 +56,18 @@ public class Grid : MonoBehaviour {
 		}
 	}
 	
-	void CreateGrid() {
+	private void CreateGrid() {
 		setupNodes();
 		addNeighbors();
 	}
 	
 	private void setupNodes() {
 		graph = new Graph();
-		Vector3 worldBottomLeft = getWorldBottomLeft();
 		Node node;
 		
 		for (int x = 0; x < gridSizeX; x++) {
 			for (int y = 0; y < gridSizeY; y++) {
-				Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
+				Vector3 worldPoint = getWorldPoint(x, y);
 				bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius-.1f, unwalkableMask));
 				//hits = Physics.(worldPoint + Vector3.up * (maxHeight + 1), nodeRadius-.05f, Vector3.down, 100f, unwalkableMask);
 				float height = 0;
@@ -84,31 +87,78 @@ public class Grid : MonoBehaviour {
 	}
 	
 	private Vector3 getWorldBottomLeft() {
-		return transform.position - Vector3.right * gridWorldSize.x/2 - Vector3.forward * gridWorldSize.y/2;
+		float xDist = gridWorldSize.x / 2;
+		float yDist = gridWorldSize.y / 2;
+		return transform.position - (Vector3.right * xDist) - (Vector3.forward * yDist);
+	}
+	
+	private Vector3 getWorldPoint (int x, int y) {
+		// x full squares + 1 half square;
+		float xDist = (x * nodeDiameter) + nodeRadius;
+		float yDist = (y * nodeDiameter) + nodeRadius;
+		return getWorldBottomLeft() + (Vector3.right * xDist) + (Vector3.forward * yDist);
 	}
 	
 	private void addNeighbors() {
 		Vector3 neighborKey;
+		Node neighbor;
 		foreach(Node workingNode in graph) {
-			for (int i = -2; i <= 2; i++) {
-				for (int j = -2; j <= 2; j++) {
-					int neighborX = (int) workingNode.key.x + i;
-					int neighborY = (int) workingNode.key.y + j;
-					if ( 
-					    isSelf(i, j) || 
-					    !isOnGrid(neighborX, neighborY) ||
-					    (!allowDiagonals && isDiagonal(i, j))
-					    ) {
-						continue;
-					}
-					
-					neighborKey = new Vector3(neighborX, neighborY, 0);
-					float weight = (float) Math.Round( (workingNode.worldPosition - graph.getNodeFromKey(neighborKey).worldPosition).magnitude, 2);
-					workingNode.Neighbors.Add(graph.getNodeFromKey(neighborKey));
-					workingNode.Costs.Add(weight);
-				}
+			setNorthernNeighbor(workingNode);
+			setSouthernNeighbor(workingNode);
+			setEasternNeighbor(workingNode);
+			setWesternNeighbor(workingNode);
+		}
+	}
+	
+	/*
+	                 _      _        _ _    _        _   _    _ _      _ _ _
+		_ _ _ || _ _   || _   _ || _     ||   _ _ ||   _   ||     _ || 
+	
+	*/
+	
+	private void setDirectionalNeighbor(Node node, bool modX, bool modY, bool positive) {
+		int neighborX;
+		int neighborY;
+		int increment;
+		Node currentWorkingNeighbor;
+		float incline;
+		
+		for (int i = 1; i <= 2; i++) {
+			increment = positive ? i : -i;
+			neighborX = modX ? (int) node.key.x + increment : (int) node.key.x;
+			neighborY = modY ? (int) node.key.y + increment : (int) node.key.y;
+			if (!isOnGrid(neighborX, neighborY)) {
+				continue;
+			}
+			
+			currentWorkingNeighbor = graph.GetNodeFromKey(new Vector3(neighborX, neighborY, 0));
+			incline = currentWorkingNeighbor.worldPosition.y - node.worldPosition.y;
+			graph.AddDirectedEdge(node, currentWorkingNeighbor, getWeight(node, currentWorkingNeighbor));
+			
+			if (incline >= -0.5f) {
+				return;
 			}
 		}
+	}
+	
+	private void setNorthernNeighbor(Node node) {
+		setDirectionalNeighbor(node, false, true, true);
+	}
+
+	private void setSouthernNeighbor(Node node) {
+		setDirectionalNeighbor(node, false, true, false);
+	}
+	
+	private void setEasternNeighbor(Node node) {
+		setDirectionalNeighbor(node, true, false, true);
+	}
+	
+	private void setWesternNeighbor(Node node) {
+		setDirectionalNeighbor(node, true, false, false);
+	}
+	
+	private float getWeight(Node nodeA, Node nodeB) {
+		return (float) Math.Round( (nodeA.worldPosition - nodeB.worldPosition).magnitude, 2);
 	}
 	
 	public List<Node> GetNeighborsAllowDiaganols(Node node) {
@@ -123,186 +173,43 @@ public class Grid : MonoBehaviour {
 	/*
 	           x
 		+----+----+----+
-		|-1-1|0,-1|1,-1|
+		|-1,1|0,1 |1,1 |
 		+----+----+----+
 	y	|-1,0|0,0 |1,0 |
 		+----+----+----+
-		|-1,1|0,1 |1,1 |
+		|-1-1|0-1 |1-1 |
 		+----+----+----+
 	
 		           x
 		+----+----+----+----+----+
-		|-2-2|-1-2|0,-2|1,-2|2,-2|
+		|-2,2|-1,2|0,2 |1,2 |2,2 |
 		+----+----+----+----+----+
-	y	|-2-1|-1-1|0,-1|1,-1|2,-1|
+	y	|-2,1|-1,1|0,1 |1,1 |2,1 |
 		+----+----+----+----+----+
 		|-2,0|-1,0|0,0 |1,0 |1,0 |
 		+----+----+----+----+----+
-		|-2,1|-1,1|0,1 |1,1 |2,1 |
+		|-2-1|-1-1|0,-1|1,-1|2,-1|
 		+----+----+----+----+----+
-		|-2,2|-1,2|0,2 |1,2 |2,2 |
+		|-2-2|-1-2|0,-2|1,-2|2,-2|
 		+----+----+----+----+----+
 	
 	*/
 	
 	// TODO: fix getNeighbors when allowDiagonals is true and corners are in the way
 	// TODO: Allow adding other filters more easily, height filters for instance
-	private List<Node> getNeighbors(Node node, bool allowDiagonals) {
-		List<Node> neighbors = new List<Node>();
-		
-		//neighbors.AddRange(getNorthernNeighbor(node));
-		//neighbors.AddRange(getEasternNeighbor(node));
-		//neighbors.AddRange(getSouthernNeighbor(node));
-		//neighbors.AddRange(getWesternNeighbor(node));
-		
-/*		
-		for (int x = -1; x <= 1; x++) {
-			for (int y = -1; y <= 1; y++) {
-				int neighborX = node.gridX + x;
-				int neighborY = node.gridY + y;
-				if ( 
-					isSelf(x, y) || 
-					!isOnGrid(neighborX, neighborY) ||
-					(!allowDiagonals && isDiagonal(x, y))
-				) {
-					continue;
-				}
-				
-				neighbors.Add(grid[neighborX, neighborY]);
-			}
-		}
-*/
+	private List<Node> getNeighbors(Node node, bool allowDiagonals) {		
 		return node.Neighbors;
 	}
-/*	
-	private List<Node> getNorthernNeighbor(Node node) {
-		List<Node> northernNeighbor = new List<Node>();
-		int neighborY;
-		Node currentWorkingNeighbor;
-		for (int i = 1; i < 3; i++) {
-			neighborY = node.gridY + i;
-			if (!isOnGrid(node.gridX, neighborY)) {
-				return northernNeighbor;
-			}
-			
-			currentWorkingNeighbor = grid[node.gridX, neighborY];
-			float incline = node.worldPosition.y - currentWorkingNeighbor.worldPosition.y;
-			
-			if (incline <= 0.1f) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-				return northernNeighbor;
-			}
-			
-			if (northernNeighbor.Count == 0) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-			} else {
-				Node currentReturnNeighbor = northernNeighbor[0];
-				if ( currentReturnNeighbor.worldPosition.y < currentWorkingNeighbor.worldPosition.y) {
-					northernNeighbor.Remove(currentReturnNeighbor);
-					northernNeighbor.Add(currentWorkingNeighbor);
-				}
-			}
-		}
-		
-		return northernNeighbor;
-	}
 	
-	private List<Node> getSouthernNeighbor(Node node) {
-		List<Node> northernNeighbor = new List<Node>();
-		int neighborY;
-		Node currentWorkingNeighbor;
-		for (int i = 1; i < 3; i++) {
-			neighborY = node.gridY - i;
-			if (!isOnGrid(node.gridX, neighborY)) {
-				return northernNeighbor;
-			}
-			
-			currentWorkingNeighbor = grid[node.gridX, neighborY];
-			float incline = node.worldPosition.y - currentWorkingNeighbor.worldPosition.y;
-			
-			if (incline <= 0.1f) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-				return northernNeighbor;
-			}
-			
-			if (northernNeighbor.Count == 0) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-			} else {
-				Node currentReturnNeighbor = northernNeighbor[0];
-				if ( currentReturnNeighbor.worldPosition.y < currentWorkingNeighbor.worldPosition.y) {
-					northernNeighbor.Remove(currentReturnNeighbor);
-					northernNeighbor.Add(currentWorkingNeighbor);
-				}
-			}
+	private List<Node> setHighestPriorityNeighbor(List<Node> list, Node neighbor) {
+		if (list.Count == 0) {
+			list.Add(neighbor);
+			return list;
 		}
 		
-		return northernNeighbor;
+		return list;
 	}
-	
-	private List<Node> getEasternNeighbor(Node node) {
-		List<Node> northernNeighbor = new List<Node>();
-		int neighborX;
-		Node currentWorkingNeighbor;
-		for (int i = 1; i < 3; i++) {
-			neighborX = node.gridX + i;
-			if (!isOnGrid(neighborX, node.gridY)) {
-				return northernNeighbor;
-			}
-			
-			currentWorkingNeighbor = grid[neighborX, node.gridY];
-			float incline = node.worldPosition.y - currentWorkingNeighbor.worldPosition.y;
-			
-			if (incline <= 0.1f) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-				return northernNeighbor;
-			}
-			
-			if (northernNeighbor.Count == 0) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-			} else {
-				Node currentReturnNeighbor = northernNeighbor[0];
-				if ( currentReturnNeighbor.worldPosition.y < currentWorkingNeighbor.worldPosition.y) {
-					northernNeighbor.Remove(currentReturnNeighbor);
-					northernNeighbor.Add(currentWorkingNeighbor);
-				}
-			}
-		}
 		
-		return northernNeighbor;
-	}
-	
-	private List<Node> getWesternNeighbor(Node node) {
-		List<Node> northernNeighbor = new List<Node>();
-		int neighborX;
-		Node currentWorkingNeighbor;
-		for (int i = 1; i < 3; i++) {
-			neighborX = node.gridX - i;
-			if (!isOnGrid(neighborX, node.gridY)) {
-				return northernNeighbor;
-			}
-			
-			currentWorkingNeighbor = grid[neighborX, node.gridY];
-			float incline = node.worldPosition.y - currentWorkingNeighbor.worldPosition.y;
-			
-			if (incline <= 0.1f) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-				return northernNeighbor;
-			}
-			
-			if (northernNeighbor.Count == 0) {
-				northernNeighbor.Add(currentWorkingNeighbor);
-			} else {
-				Node currentReturnNeighbor = northernNeighbor[0];
-				if ( currentReturnNeighbor.worldPosition.y < currentWorkingNeighbor.worldPosition.y) {
-					northernNeighbor.Remove(currentReturnNeighbor);
-					northernNeighbor.Add(currentWorkingNeighbor);
-				}
-			}
-		}
-		
-		return northernNeighbor;
-	}
-*/	
 	public void HighlightSquaresInRange(Node origin, float range) {
 		PathRequestManager.RequestHighlights(origin.worldPosition, range, HighlightSquare);
 	}
@@ -336,7 +243,7 @@ public class Grid : MonoBehaviour {
 		int y = worldPointYToKeyInt(worldPosition.z);
 		int z = worldPointZToKeyInt(worldPosition.y);
 		
-		return graph.getNodeFromKey(new Vector3(x,y,z));
+		return graph.GetNodeFromKey(new Vector3(x,y,z));
 	}
 	
 	private int worldPointXToKeyInt(float worldPointX) {
@@ -356,7 +263,7 @@ public class Grid : MonoBehaviour {
 	}
 	
 	void OnNodeChange(Node newNode) {
-		graph.UpdateNode(newNode);
+		//graph.UpdateNode(newNode);
 	}
 	
 	void ChangeHighlight(Node newHoveredNode) {
