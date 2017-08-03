@@ -155,7 +155,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	public void HandleChooseMoveSelection() {
-		if (stateManager.getActiveUnit().gameObject.Equals(gameObject)) {
+		if (stateManager.getActiveUnit().gameObject.Equals(gameObject) && !hasMoved) {
 			StopCoroutine("ChooseMoveLocation");
 			StartCoroutine("ChooseMoveLocation");
 		}
@@ -176,7 +176,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	public void HandleChooseAttackSelection() {
-		if (stateManager.getActiveUnit().gameObject.Equals(gameObject)) {
+		if (stateManager.getActiveUnit().gameObject.Equals(gameObject) && !hasActed) {
 			StopCoroutine("ChooseAttackLocation");
 			StartCoroutine("ChooseAttackLocation");
 		}
