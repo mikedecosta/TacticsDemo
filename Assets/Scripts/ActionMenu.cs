@@ -19,8 +19,6 @@ public class ActionMenu : MonoBehaviour {
 	}
 	
 	public void SetButtons(Unit owningUnit, List<IButton> ibuttons) {
-		Button working;
-		RectTransform rectTransform;
 		List<Button> toAdd = new List<Button>();
 		for(int i = 0; i < ibuttons.Count; i++) {
 			toAdd.Add(createButton(ibuttons[i]));

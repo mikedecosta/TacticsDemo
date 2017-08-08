@@ -65,7 +65,6 @@ public class CameraRaycaster : MonoBehaviour
 					TriggerLayerChangeObservers(m_layerHit);
 				}
 				
-				Vector3 worldPoint = hit.Value.point;
 				Node tmp = grid.NodeFromWorldPoint(hit.Value.point);
 				if (pollHit) {
 					Debug.Log ("node poll: " + tmp.ToString());

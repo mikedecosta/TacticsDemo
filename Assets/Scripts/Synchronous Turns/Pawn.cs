@@ -15,7 +15,7 @@ public class Pawn : MonoBehaviour, IComparable {
 	private Vector3 moveTo;
 	
 	public float getInitiative() {
-		if (this.currentInitiative == null) {
+		if (this.currentInitiative == -1f) {
 			this.setInititative();
 		}
 		
@@ -70,7 +70,7 @@ public class Pawn : MonoBehaviour, IComparable {
 			}
 		} else if (stateManager.getCurrentState().Equals(StateManager.states.action)) {
 			cancelHighlight();
-			if ( moveTo != null) {
+			if ( moveTo != transform.position) {
 				float step = landSpeed * Time.deltaTime;
 				transform.position = Vector3.MoveTowards(transform.position, moveTo, step);
 			}

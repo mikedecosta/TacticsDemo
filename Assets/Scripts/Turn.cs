@@ -2,12 +2,11 @@
 using System.Collections;
 
 public class Turn : MonoBehaviour {
-	
+/*	
 	SortedList units;
 	Unit[] unsorted;
 	Unit currentUnit;
 
-	// Use this for initialization
 	void Start () {
 		Unit[] unsorted = FindObjectsOfType<Unit>();
 		currentUnit = unsorted[0];
@@ -23,7 +22,6 @@ public class Turn : MonoBehaviour {
 		return currentUnit;
 	}
 	
-	// Update is called once per frame
 	void Update () {
 	
 	}
@@ -33,4 +31,5 @@ public class Turn : MonoBehaviour {
 			
 		}
 	}
+*/
 }

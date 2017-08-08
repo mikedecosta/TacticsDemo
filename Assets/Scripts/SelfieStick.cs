@@ -41,7 +41,6 @@ public class SelfieStick : MonoBehaviour {
 		targetPosition = ClampTargetByMap(targetPosition);
 		Debug.Log("new targetPosition: " + targetPosition);
 		Vector3 distance = Vector3.zero;
-		float startTime = Time.time;
 		
 		while (true) {
 			distance = transform.position - targetPosition;

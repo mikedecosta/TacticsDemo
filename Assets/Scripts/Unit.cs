@@ -10,7 +10,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 
 	public Transform target;
 	
-	[SerializeField] String CharacterName;
+	[SerializeField] string CharacterName;
 	[SerializeField] int initiativeMin = 1;
 	[SerializeField] int initiativeMax = 100;
 	[SerializeField] float maxHealth = 1000f;
@@ -18,8 +18,6 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	[SerializeField] float basicAttackDamage = 250f;
 	[SerializeField] int basicAttackRadiusInSquares = 1;
 	[SerializeField] int moveSquaresPerRound = 6;
-	public Sprite redTeamOutline;
-	public Sprite blueTeamOutline;
 	
 	float currentHealth;
 	int currentInitiative;
@@ -32,11 +30,9 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	Grid grid;
 	StateManager stateManager;
 	CameraRaycaster cameraRaycaster;
-	float walkStopRadius = 0.3f;
+	GameObject parentTeam;
 	bool hasMoved;
 	bool hasActed;
-	
-	ThirdPersonCharacter tpcharacter;
 	
 	/* UI Action Panel */
 	GameObject actionUI;
@@ -74,11 +70,10 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 		stateManager.activeUnitChangeObservers += HandleChooseTactics;
 		cameraRaycaster = Camera.main.GetComponent<CameraRaycaster>();
 		cameraRaycaster.nodeHoverChangeObservers += OnNodeHighlightChange;
+		parentTeam = transform.parent.gameObject;
 		grid = FindObjectOfType<Grid>();
 		currentNode = grid.NodeFromWorldPoint(transform.position);
 		currentNode.setOccupidUnit(this);
-		
-		tpcharacter = GetComponent<ThirdPersonCharacter>();
 		
 		setUIElements();
 	}
@@ -129,7 +124,6 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	void HandleChooseTactics(Unit activeUnit) {
-		//Debug.Log(gameObject.name + ": HandleChooseTactics");
 		if (!activeUnit.gameObject.Equals(gameObject)) {
 			return;
 		}
@@ -137,15 +131,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 		actionUI.GetComponent<CanvasGroup>().alpha = 1;
 		setUnitText();
 		Image tOutline = tokenOutline.GetComponent<Image>();
-		Color color = Color.green;
-		if (activeUnit.transform.parent.tag == "RedTeam") {
-			color = Color.red;
-			tOutline.sprite = redTeamOutline;
-		} else if (activeUnit.transform.parent.tag == "BlueTeam") {
-			color = Color.blue;
-			tOutline.sprite = blueTeamOutline;
-		}
-		
+		tOutline.sprite = parentTeam.GetComponent<Team>().token;
 		actionMenu.ShowButtons(this);
 	}
 	
@@ -229,7 +215,6 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	public void HandleChooseWait() {
 		if (stateManager.getActiveUnit().gameObject.Equals(gameObject)) {
-			//Debug.Log(gameObject.name + ": HandleWaitSelection");
 			EndTheTurn();
 		}
 	}
@@ -248,10 +233,8 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	
 	
 	public void OnPathFound(Vector3[] newPath, bool pathFound) {
-		//Debug.Log(gameObject.name + ": Inside OnPathFound");
 		if (pathFound) {
 			path = newPath;
-			//Debug.Log(gameObject.name + ": Last waypoint in path = " + path[path.Length - 1].ToString());
 			TriggerTacticsChosenObservers();
 		} else {
 			path = null;
@@ -270,16 +253,11 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 		
 		Vector3 currentWaypoint = path[0];
 		Vector3 previousWaypoint = transform.position;
-		//Vector3 movePoint;
 		
 		while (true) {
-			//movePoint = currentWaypoint - transform.position;
-			//if (movePoint.magnitude <= walkStopRadius) {
 			if (transform.position == currentWaypoint) {
-				//transform.position = currentWaypoint;
 				Node previousNode = grid.NodeFromWorldPoint(previousWaypoint);				
 				previousNode.unsetOccupiedUnit();
-				//previousNode.resetCosts();
 				previousWaypoint = path[targetIndex];
 				
 				currentNode = grid.NodeFromWorldPoint(currentWaypoint);
@@ -300,7 +278,6 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 			}
 			
 			transform.position = Vector3.MoveTowards(transform.position, currentWaypoint, moveSpeed * Time.deltaTime);
-			//tpcharacter.Move(movePoint, false, false);
 			yield return null;
 		}
 	}
@@ -326,7 +303,7 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 	}
 	
 	public int GetInitiative() {
-		if (currentInitiative == null) {
+		if (currentInitiative == -1) {
 			GenerateInitiative();	
 		}
 		
