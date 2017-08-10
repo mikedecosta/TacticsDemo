@@ -318,6 +318,10 @@ public class Unit : MonoBehaviour, IComparable<Unit> {
 		return GetInitiative().CompareTo(other.GetInitiative());
 	}
 	
+	public bool isDead() {
+		return currentHealth <= 0;
+	}
+	
 	void unsetUnitText() {
 		statsText.GetComponent<Text>().text = "";
 	}

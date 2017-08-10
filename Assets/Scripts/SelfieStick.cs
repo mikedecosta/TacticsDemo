@@ -1,14 +1,14 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityStandardAssets.CrossPlatformInput;
 
 public class SelfieStick : MonoBehaviour {
 	private const int ROTATE_DEGREES = 45;
 	private const int TILT_UP_MAX = 35;
 	private const int TILT_DOWN_MAX = 65;
 	private const int TILT_DEGREES = 15;
-	private const int ZOOM_IN_MAX = 1;
-	private const int ZOOM_OUT_MAX = 3;
-	private const float ZOOM_AMOUNT = 0.5f;
+	private const float ZOOM_IN_MAX = 1f;
+	private const float ZOOM_OUT_MAX = 6f;
 	private const float moveTime = 1f;
 
 	private Vector3 stickRotation;
@@ -22,6 +22,13 @@ public class SelfieStick : MonoBehaviour {
 		stateManager.activeUnitChangeObservers += focusUnit;
 		stateManager.stateChangeObservers += HandleStateChange;
 		grid = FindObjectOfType<Grid>();
+	}
+	
+	void Update() {
+		float update = CrossPlatformInputManager.GetAxis("Mouse ScrollWheel");
+		if (update != 0f) {
+			zoom(-update);
+		}
 	}
 
 	void HandleStateChange() {
@@ -37,9 +44,7 @@ public class SelfieStick : MonoBehaviour {
 	}
 	
 	IEnumerator moveToPosition(Vector3 targetPosition) {
-		Debug.Log("targetPosition: " + targetPosition);
 		targetPosition = ClampTargetByMap(targetPosition);
-		Debug.Log("new targetPosition: " + targetPosition);
 		Vector3 distance = Vector3.zero;
 		
 		while (true) {
@@ -84,28 +89,18 @@ public class SelfieStick : MonoBehaviour {
 		return stickRotation.x + TILT_DEGREES <= TILT_DOWN_MAX;
 	}
 	
-	public void zoomIn() {
-		if ( transform.localScale.y <= ZOOM_IN_MAX) {
-			return;
+	public bool canZoomIn(float amount) {
+		return transform.localScale.y - amount >= ZOOM_IN_MAX;
+	}
+	
+	public bool canZoomOut(float amount) {
+		return transform.localScale.y + amount <= ZOOM_OUT_MAX;
+	}
+	
+	public void zoom(float amount) {
+		if ( (amount > 0 && canZoomOut(amount)) || amount < 0 && canZoomIn(amount) ) {
+			transform.localScale += new Vector3(0, amount, 0);	
 		}
-		
-		transform.localScale -= new Vector3(0, ZOOM_AMOUNT, 0);
-	}
-	
-	public bool canZoomIn() {
-		return transform.localScale.y - ZOOM_AMOUNT >= ZOOM_IN_MAX;
-	}
-	
-	public void zoomOut() {
-		if ( transform.localScale.y >= ZOOM_OUT_MAX) {
-			return;
-		}
-		
-		transform.localScale += new Vector3(0, ZOOM_AMOUNT, 0);
-	}
-	
-	public bool canZoomOut() {
-		return transform.localScale.y + ZOOM_AMOUNT <= ZOOM_OUT_MAX;
 	}
 	
 	private void rotate(int degrees) {

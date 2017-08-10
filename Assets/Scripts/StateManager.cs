@@ -10,6 +10,7 @@ public class StateManager : MonoBehaviour {
 	private Unit[] units;
 	private Unit activeUnit;
 	private int unitIndex = 0;
+	private LevelManager levelManager;
 	
 	public states getCurrentState() {
 		return currentState;
@@ -36,6 +37,7 @@ public class StateManager : MonoBehaviour {
 	
 	// Use this for initialization
 	void Start () {
+		levelManager = GetComponent<LevelManager>();
 		currentState = states.loading;
 		loadingDuration = .5f;
 		units = FindObjectsOfType<Unit>();
@@ -80,13 +82,28 @@ public class StateManager : MonoBehaviour {
 	
 	private void setNextActiveUnit() {
 		Debug.Log("setNextActiveUnit: " + unitIndex);
-		unitIndex++;
-		if (unitIndex == units.Length) {
-			unitIndex = 0;
+		int startIndex = unitIndex;
+		while (true) {
+			unitIndex++;
+			if (unitIndex == units.Length) {
+				unitIndex = 0;
+			}
+			if (startIndex == unitIndex) {
+				triggerSceneEnd();
+			}
+			
+			activeUnit = units[unitIndex];
+			if (activeUnit.isDead()) {
+				continue;
+			}
+			
+			TriggerActiveUnitChangeObservers(activeUnit);
+			break;
 		}
-		
-		activeUnit = units[unitIndex];
-		TriggerActiveUnitChangeObservers(activeUnit);
+	}
+	
+	private void triggerSceneEnd() {
+		levelManager.LoadNextLevel();
 	}
 	
 	// Update is called once per frame
