@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 
 public class Grid : MonoBehaviour {
@@ -12,6 +11,7 @@ public class Grid : MonoBehaviour {
 	public float nodeRadius;
 	public TerrainType[] walkableRegions;
 	public bool allowDiagonals = false;
+	public float minStandableHeight;
 	
 	LayerMask walkableMask;
 	Dictionary<int, int> walkableRegionsDictionary = new Dictionary<int, int>();
@@ -20,7 +20,7 @@ public class Grid : MonoBehaviour {
 	float nodeDiameter;
 	int gridSizeX;
 	int gridSizeY;
-	//int gridHeight;
+	int gridLevels;
 	CameraRaycaster cameraRaycaster;
 	Node hoveredNode;
 	HashSet<Node> highlightedNodes = new HashSet<Node>();
@@ -30,7 +30,7 @@ public class Grid : MonoBehaviour {
 		nodeDiameter = nodeRadius * 2;
 		gridSizeX = Mathf.RoundToInt(gridWorldSize.x/nodeDiameter);
 		gridSizeY = Mathf.RoundToInt(gridWorldSize.y/nodeDiameter);
-		//gridHeight = Mathf.RoundToInt(maxHeight/nodeDiameter);
+		gridLevels = Mathf.RoundToInt(maxHeight/nodeDiameter/minStandableHeight);
 		
 		CreateWalkableRegionsDictionary();
 		CreateGrid();
@@ -52,7 +52,7 @@ public class Grid : MonoBehaviour {
 	
 	public int MaxSize {
 		get {
-			return gridSizeX * gridSizeY * 1; // TODO add gridHeight
+			return gridSizeX * gridSizeY * gridLevels;
 		}
 	}
 	
@@ -67,21 +67,50 @@ public class Grid : MonoBehaviour {
 		
 		for (int x = 0; x < gridSizeX; x++) {
 			for (int y = 0; y < gridSizeY; y++) {
+				// (xGrid, 0, yGrid)
 				Vector3 worldPoint = getWorldPoint(x, y);
 				bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius-.1f, unwalkableMask));
-				//hits = Physics.(worldPoint + Vector3.up * (maxHeight + 1), nodeRadius-.05f, Vector3.down, 100f, unwalkableMask);
 				float height = 0;
 				Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
-				RaycastHit hit;
-				if (Physics.SphereCast(ray, nodeRadius-.1f, out hit, 100f, walkableMask)) {
-					height = (hit.point.y);
-					worldPoint.y = height;
+				RaycastHit[] hits = Physics.SphereCastAll(ray, nodeRadius-.1f, 50f, walkableMask);
+				ArrayList hitsList = new ArrayList(hits);
+				hitsList.Sort(new ByHeightComparer());
+				int level = 0;
+				Dictionary<Vector3, Node> nodes = new Dictionary<Vector3, Node>();
+				foreach (RaycastHit hit in hitsList) {
+					if (level == 0) {
+						height = (hit.point.y);
+						worldPoint.y = height;
+						// (xGrid, height, yGrid)
+						Vector3 key = new Vector3(x, y, level);
+						node = new Node(walkable, worldPoint, key, 0);
+						nodes[key] = node;
+						level++;
+					} else {
+						height = (hit.point.y);
+						worldPoint.y = height;
+						// (xGrid, height, yGrid)
+						Vector3 previousKey = new Vector3(x, y, level - 1);
+						Node previous;
+						nodes.TryGetValue(previousKey, out previous);
+						if (previous != null) {
+							if ( height - previous.worldPosition.y < minStandableHeight ) {
+								node = new Node(walkable, worldPoint, previousKey, 0);
+								nodes[previousKey] = node;
+							} else {
+								Vector3 key = new Vector3(x, y, level);
+								node = new Node(walkable, worldPoint, key, 0);
+								nodes[key] = node;
+								level++;
+							}
+						}
+					}
 				}
 				
-				Vector3 key = new Vector3(x, y, 0);
-				node = new Node(walkable, worldPoint, key, 0);
-				node.nodeChangedObservers += OnNodeChange;
-				graph.AddNode(key, node);
+				foreach(KeyValuePair<Vector3, Node> kvp in nodes) {
+					kvp.Value.nodeChangedObservers += OnNodeChange;
+					graph.AddNode(kvp.Key, kvp.Value);
+				}
 			}
 		}
 	}
@@ -108,10 +137,13 @@ public class Grid : MonoBehaviour {
 		}
 	}
 	
-	/*
-	                 _      _        _ _    _        _   _    _ _      _ _ _
-		_ _ _ || _ _   || _   _ || _     ||   _ _ ||   _   ||     _ || 
+	/*    a       a       a       a       a,b     a,b     a       a
+	                _     _       _ _   _       _   _   _ _     _ _ _
+		_ _ _ X _ _ | X _ | _ X _ | | X | _ _ X | _ | X | | _ X | | |
 	
+	    0,1     0     0              a,b1     a
+	      _   _       _ _   _ _     _   _   _ _   
+		_ _ X _ _ X _ | _ X _ | _ X | _ _ X | _ _
 	*/
 	
 	private void setDirectionalNeighbor(Node node, bool modX, bool modY, bool positive) {
@@ -122,21 +154,55 @@ public class Grid : MonoBehaviour {
 		float incline;
 		
 		for (int i = 1; i <= 2; i++) {
-			increment = positive ? i : -i;
-			neighborX = modX ? (int) node.key.x + increment : (int) node.key.x;
-			neighborY = modY ? (int) node.key.y + increment : (int) node.key.y;
-			if (!isOnGrid(neighborX, neighborY)) {
-				continue;
+			incline = -99f;
+			for (int l = 0; l < gridLevels; l++) {
+				increment = positive ? i : -i;
+				neighborX = modX ? (int) node.key.x + increment : (int) node.key.x;
+				neighborY = modY ? (int) node.key.y + increment : (int) node.key.y;
+				
+				if (!isOnGrid(neighborX, neighborY)) {
+					break;
+				}
+				
+				currentWorkingNeighbor = graph.GetNodeFromKey(new Vector3(neighborX, neighborY, l));
+				if (currentWorkingNeighbor == null || currentWorkingNeighbor == graph.emptyNode) {
+					break;
+				}
+				incline = currentWorkingNeighbor.worldPosition.y - node.worldPosition.y;
+				
+				if (roofOverHead(node) && incline >= 0.5f) {
+					continue;
+				}
+				
+				if (ledgeInTheWay(node, currentWorkingNeighbor) && incline <= -0.5f) {
+					continue;
+				}
+
+				graph.AddDirectedEdge(node, currentWorkingNeighbor, getWeight(node, currentWorkingNeighbor));
 			}
-			
-			currentWorkingNeighbor = graph.GetNodeFromKey(new Vector3(neighborX, neighborY, 0));
-			incline = currentWorkingNeighbor.worldPosition.y - node.worldPosition.y;
-			graph.AddDirectedEdge(node, currentWorkingNeighbor, getWeight(node, currentWorkingNeighbor));
 			
 			if (incline >= -0.5f) {
 				return;
 			}
 		}
+	}
+	
+	private bool roofOverHead(Node node) {
+		Node aboveHead = graph.GetNodeFromKey(new Vector3(node.key.x, node.key.y, node.key.z + 1));
+		if (aboveHead == null || aboveHead == graph.emptyNode) {
+			return false;
+		}
+		
+		return aboveHead.worldPosition.y - node.worldPosition.y < 2 * minStandableHeight;
+	}
+	
+	private bool ledgeInTheWay(Node current, Node target) {
+		Node ledge = graph.GetNodeFromKey(new Vector3(target.key.x, target.key.y, target.key.z + 1));
+		if (ledge == null || ledge == graph.emptyNode) {
+			return false;
+		}
+		
+		return ledge.worldPosition.y - current.worldPosition.y < minStandableHeight;
 	}
 	
 	private void setNorthernNeighbor(Node node) {
@@ -225,7 +291,6 @@ public class Grid : MonoBehaviour {
 			x < gridSizeX &&
 			y >= 0 &&
 			y < gridSizeY;
-		
 	}
 	
 	private bool isSelf(int x, int y) {
@@ -239,9 +304,19 @@ public class Grid : MonoBehaviour {
 	public Node NodeFromWorldPoint(Vector3 worldPosition) {		
 		int x = worldPointXToKeyInt(worldPosition.x);
 		int y = worldPointYToKeyInt(worldPosition.z);
-		int z = worldPointZToKeyInt(worldPosition.y);
+		if (!isOnGrid(x, y)) {
+			throw new KeyNotFoundException("NodeFromWorldPoint " + x + "," + y + " is not on grid.");
+		}
+		Node node;
+		for (int h = 0; h < gridLevels; h++) {
+			node = graph.GetNodeFromKey(new Vector3(x, y, h));
+			double distance = Math.Abs(node.worldPosition.y - worldPosition.y);
+			if (distance < minStandableHeight) {
+				return node;
+			}
+		}
 		
-		return graph.GetNodeFromKey(new Vector3(x,y,z));
+		throw new KeyNotFoundException("NodeFromWorldPoint " + worldPosition + " does not exist.");
 	}
 	
 	private int worldPointXToKeyInt(float worldPointX) {
@@ -322,6 +397,16 @@ public class Grid : MonoBehaviour {
 	public class TerrainType {
 		public LayerMask terrainMask;
 		public int terrainPenalty;
+	}
+	
+	public class ByHeightComparer : IComparer, IComparer<RaycastHit> {
+		public int Compare(RaycastHit a, RaycastHit b) {
+			return a.point.y.CompareTo(b.point.y);
+		}
+		
+		int IComparer.Compare(System.Object a, System.Object b) {
+			return Compare ( (RaycastHit)a, (RaycastHit)b);
+		}
 	}
 	
 	public interface IPreGridValidator {
