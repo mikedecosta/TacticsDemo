@@ -63,56 +63,64 @@ public class Grid : MonoBehaviour {
 	
 	private void setupNodes() {
 		graph = new Graph();
-		Node node;
 		
 		for (int x = 0; x < gridSizeX; x++) {
 			for (int y = 0; y < gridSizeY; y++) {
 				// (xGrid, 0, yGrid)
 				Vector3 worldPoint = getWorldPoint(x, y);
 				bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius-.1f, unwalkableMask));
-				float height = 0;
 				Ray ray = new Ray(worldPoint + Vector3.up * 50, Vector3.down);
 				RaycastHit[] hits = Physics.SphereCastAll(ray, nodeRadius-.1f, 50f, walkableMask);
-				ArrayList hitsList = new ArrayList(hits);
-				hitsList.Sort(new ByHeightComparer());
-				int level = 0;
-				Dictionary<Vector3, Node> nodes = new Dictionary<Vector3, Node>();
-				foreach (RaycastHit hit in hitsList) {
-					if (level == 0) {
-						height = (hit.point.y);
-						worldPoint.y = height;
-						// (xGrid, height, yGrid)
-						Vector3 key = new Vector3(x, y, level);
-						node = new Node(walkable, worldPoint, key, 0);
-						nodes[key] = node;
-						level++;
-					} else {
-						height = (hit.point.y);
-						worldPoint.y = height;
-						// (xGrid, height, yGrid)
-						Vector3 previousKey = new Vector3(x, y, level - 1);
-						Node previous;
-						nodes.TryGetValue(previousKey, out previous);
-						if (previous != null) {
-							if ( height - previous.worldPosition.y < minStandableHeight ) {
-								node = new Node(walkable, worldPoint, previousKey, 0);
-								nodes[previousKey] = node;
-							} else {
-								Vector3 key = new Vector3(x, y, level);
-								node = new Node(walkable, worldPoint, key, 0);
-								nodes[key] = node;
-								level++;
-							}
-						}
-					}
-				}
-				
+				Dictionary<Vector3, Node> nodes = createNodesFromHits(hits, worldPoint, walkable, x, y);
+								
 				foreach(KeyValuePair<Vector3, Node> kvp in nodes) {
 					kvp.Value.nodeChangedObservers += OnNodeChange;
 					graph.AddNode(kvp.Key, kvp.Value);
 				}
 			}
 		}
+	}
+	
+	private Dictionary<Vector3, Node> createNodesFromHits(RaycastHit[] hits, Vector3 worldPoint, bool walkable, int x, int y) {
+		float height = 0;
+		int level = 0;
+		Node node;
+		Dictionary<Vector3, Node> nodes = new Dictionary<Vector3, Node>();
+		
+		ArrayList hitsList = new ArrayList(hits);
+		hitsList.Sort(new ByHeightComparer());
+		foreach (RaycastHit hit in hitsList) {
+			height = (hit.point.y);
+			worldPoint.y = height;
+			Vector3 key = new Vector3(x, y, level);
+			
+			if (level == 0) {
+				// (xGrid, height, yGrid)		
+				node = new Node(walkable, worldPoint, key, 0);
+				nodes[key] = node;
+				level++;
+			} else {
+				// (xGrid, height, yGrid)
+				Vector3 previousKey = new Vector3(x, y, level - 1);
+				Node previous;
+				nodes.TryGetValue(previousKey, out previous);
+				
+				if (previous == null) {
+					continue;
+				}				
+				
+				if ( height - previous.worldPosition.y < minStandableHeight ) {
+					node = new Node(walkable, worldPoint, previousKey, 0);
+					nodes[previousKey] = node;
+				} else {
+					node = new Node(walkable, worldPoint, key, 0);
+					nodes[key] = node;
+					level++;
+				}
+			}
+		}
+		
+		return nodes;
 	}
 	
 	private Vector3 getWorldBottomLeft() {
