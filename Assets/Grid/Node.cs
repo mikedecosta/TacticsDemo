@@ -140,28 +140,28 @@ public class Node : IHeapItem<Node> {
 	
 	public override string ToString() {
 		string jsString = "{ \"walkable\" : ";
-		jsString += walkable ? "\"true\", " : "\"false\", ";
+		jsString += walkable ? "true, " : "false, ";
 		jsString += "\"highlighted\" : ";
-		jsString += highlighted ? "\"true\", " : "\"false\", ";
+		jsString += highlighted ? "true, " : "false, ";
 		jsString += "\"occupied\" : ";
 		if (isOccupied) {
-			jsString += "\"true\", ";
+			jsString += "true, ";
 			Unit unit = occupiedUnit;
 			jsString += "\"occupiedUnit\" : \"" + unit.name + "\", ";
 		} else {
-			jsString += "\"false\", ";
+			jsString += "false, ";
 		}
-		jsString += "\"worldPosition\" : \"" + worldPosition.ToString() + "\", ";
-		jsString += "\"key\" : \"" + key.ToString() + "\", ";
-		jsString += "\"gCost\" : \"" + gCost + "\", ";
-		jsString += "\"hCost\" : \"" + hCost + "\", ";
-		jsString += "\"fCost\" : \"" + fCost + "\", ";
+		jsString += "\"worldPosition\" : " + worldPosition.ToString() + ", ";
+		jsString += "\"key\" : " + key.ToString() + ", ";
+		jsString += "\"gCost\" : " + gCost + ", ";
+		jsString += "\"hCost\" : " + hCost + ", ";
+		jsString += "\"fCost\" : " + fCost + ", ";
 		if (Neighbors != null) {
 			jsString += "\n\t\"neighbors\" : [";
 			for(int i = 0; i < neighbors.Count; i++) {
 				Node neighbor = neighbors[i];
 				jsString += costs[i];
-				jsString += "\" => (" + neighbor.key + ")\", ";
+				jsString += " => " + neighbor.key + ", ";
 			}
 			jsString += "]\n";
 		}

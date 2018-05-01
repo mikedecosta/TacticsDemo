@@ -7,6 +7,7 @@ public class Graph : IEnumerable  {
 	private Dictionary<Vector3, Node> nodeSet;
 
 	public Graph() : this(null) {}
+
 	public Graph(Dictionary<Vector3, Node> nodeSet) {
 		if (nodeSet == null)
 			this.nodeSet = new Dictionary<Vector3, Node>();

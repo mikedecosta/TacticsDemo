@@ -313,7 +313,7 @@ public class Grid : MonoBehaviour {
 		int x = worldPointXToKeyInt(worldPosition.x);
 		int y = worldPointYToKeyInt(worldPosition.z);
 		if (!isOnGrid(x, y)) {
-			throw new KeyNotFoundException("NodeFromWorldPoint " + x + "," + y + " is not on grid.");
+			throw new ArgumentException("NodeFromWorldPoint " + x + "," + y + " is not on grid.");
 		}
 		Node node;
 		for (int h = 0; h < gridLevels; h++) {
@@ -324,7 +324,7 @@ public class Grid : MonoBehaviour {
 			}
 		}
 		
-		throw new KeyNotFoundException("NodeFromWorldPoint " + worldPosition + " does not exist.");
+		throw new ArgumentException("NodeFromWorldPoint " + worldPosition + " does not exist.");
 	}
 	
 	private int worldPointXToKeyInt(float worldPointX) {

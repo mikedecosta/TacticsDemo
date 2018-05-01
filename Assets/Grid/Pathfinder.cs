@@ -8,6 +8,7 @@ public class Pathfinder : MonoBehaviour {
 
 	[SerializeField] bool allowDiagonals = true;
 	[SerializeField] bool simplifyPaths = false;
+	[SerializeField] bool debug = false;
 	
 	PathRequestManager pathRequestManager;
 	Grid grid;
@@ -31,9 +32,8 @@ public class Pathfinder : MonoBehaviour {
 		
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
-		
-		//Debug.Log ("startNode = " + startNode.ToString());
-		//Debug.Log ("targetNode = " + targetNode.ToString());
+		logDebug("startNode = " + startNode.ToString());
+		logDebug("targetNode = " + targetNode.ToString());
 		
 		Heap<Node> openSet = new Heap<Node>(grid.MaxSize);
 		HashSet<Node> closedSet = new HashSet<Node>();
@@ -208,5 +208,11 @@ public class Pathfinder : MonoBehaviour {
 		int distHeight = Mathf.RoundToInt(Mathf.Abs (nodeA.worldPosition.y - nodeB.worldPosition.y));
 		
 		return 10*distX + 10*distY + distHeight;
+	}
+
+	void logDebug(string message) {
+		if(debug) {
+			Debug.Log("DEBUG: " + message);
+		}
 	}
 }

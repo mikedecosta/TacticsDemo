@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class CameraRaycaster : MonoBehaviour
 {
@@ -65,7 +66,12 @@ public class CameraRaycaster : MonoBehaviour
 					TriggerLayerChangeObservers(m_layerHit);
 				}
 				
-				Node tmp = grid.NodeFromWorldPoint(hit.Value.point);
+				Node tmp;
+				try {
+					tmp = grid.NodeFromWorldPoint(hit.Value.point);
+				} catch (Exception e) {
+					return;
+				}
 				if (pollHit) {
 					Debug.Log ("node poll: " + tmp.ToString());
 					pollHit = false;
